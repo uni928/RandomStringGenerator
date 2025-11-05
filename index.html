@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Random Base Generator</title>
+  <meta name="description" content="Base10 / Base52 / Base62 / Base64 の文字集合からランダム文字列を生成" />
+  <style>
+    :root{
+      --bg:#0f1226;/* deep indigo */
+      --card:#141836cc;/* glass */
+      --text:#e8ebff;
+      --muted:#b5b9d9;
+      --accent: #8a9cff;/* periwinkle */
+      --accent-2:#6ef2ff;/* aqua */
+      --danger:#ff6b81;
+      --ok:#5cf2a6;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --radius: 16px;
+      --shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    html,body{height:100%}
+    body{
+      margin:0; color:var(--text); background: radial-gradient(1200px 800px at 10% -10%, #1a1f4a 0%, transparent 60%),
+                 radial-gradient(1200px 800px at 110% 10%, #142b55 0%, transparent 60%),
+                 linear-gradient(180deg,#0a0d20 0%, #0f1226 60%, #0f1226 100%);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans JP, "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Inter", "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji";
+      display:grid; place-items:center; padding:32px;
+    }
+    .wrap{width:min(980px, 100%);}
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow:hidden;
+    }
+    header{
+      padding:24px 28px 0; display:flex; gap:16px; align-items:center; flex-wrap:wrap; justify-content:space-between;
+    }
+    .title{font-weight:800; letter-spacing:.2px; font-size: clamp(20px, 2.4vw, 28px)}
+    .subtitle{color:var(--muted); font-size:14px}
+    .grid{display:grid; grid-template-columns: 1.2fr .8fr; gap:16px; padding:18px 18px 0}
+    @media (max-width: 840px){ .grid{grid-template-columns: 1fr;}}
+
+    .panel{padding:18px; border-radius:calc(var(--radius) - 6px); background:rgba(10,12,28,.55); border:1px solid rgba(255,255,255,.06)}
+    .panel h3{margin:0 0 8px; font-size:14px; color:var(--muted); font-weight:600; letter-spacing:.3px}
+
+    .row{display:flex; gap:14px; align-items:center; flex-wrap:wrap}
+    .check{display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:12px; border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.03)}
+    .check input{accent-color:var(--accent)}
+    label{font-size:14px}
+
+    .len{display:flex; gap:10px; align-items:center}
+    input[type="number"]{
+      width:120px; padding:10px 12px; border-radius:12px; color:var(--text);
+      background: #0c0f24; border:1px solid rgba(255,255,255,.1); outline:none;
+      box-shadow: inset 0 1px 1px rgba(0,0,0,.3);
+    }
+    input[type="number"]:focus{border-color: var(--accent)}
+
+    .actions{display:flex; gap:10px; flex-wrap:wrap}
+    button{
+      appearance:none; border:0; cursor:pointer; padding:12px 16px; border-radius:14px;
+      background:linear-gradient(180deg, var(--accent), #6476ff);
+      color:white; font-weight:700; letter-spacing:.2px; box-shadow:var(--shadow);
+    }
+    button.secondary{background:linear-gradient(180deg, #2a325f,#1f274f)}
+    button.ghost{background: transparent; border:1px solid rgba(255,255,255,.15); color:var(--text)}
+    button:disabled{opacity:.5; cursor:not-allowed}
+
+    .result-area{padding: 0 18px 20px}
+    .result{
+      display:flex; gap:10px; align-items:stretch; margin-top:10px;
+      background: #0b0e23; border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:12px;
+    }
+    .result textarea{
+      width:100%; resize:vertical; min-height:64px; max-height:300px; border:0; outline:none;
+      background:transparent; color:var(--text); font: 600 16px/1.45 var(--mono);
+    }
+    .pill{display:inline-flex; gap:6px; align-items:center; padding:6px 10px; border-radius:999px; font-size:12px;
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.08)}
+
+    .meta{display:flex; gap:8px; flex-wrap:wrap; color:var(--muted); font-size:12px; margin-top:10px}
+
+    .footer{display:flex; justify-content:space-between; align-items:center; padding:0 18px 18px; color:var(--muted); font-size:12px}
+    .glow{position:absolute; inset:auto auto 0 0; width:220px; height:220px; background:radial-gradient(120px 120px at 45% 55%, var(--accent-2), transparent 60%); opacity:.25; filter: blur(18px); pointer-events:none}
+    .toolbar{display:flex; gap:8px}
+    .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0}
+  </style>
+</head>
+<body>
+  <div class="wrap card" role="application" aria-label="Random Base Generator">
+    <header>
+      <div>
+        <div class="title">Random Base Generator</div>
+        <div class="subtitle">Base10 / Base52 / Base62 / Base64 の集合からランダム文字列を生成します。保存は一切行いません。</div>
+      </div>
+      <div class="toolbar">
+        <button class="ghost" id="regen" title="再生成 (⌘/Ctrl + R)">再生成</button>
+        <button class="ghost" id="copy" title="コピー (⌘/Ctrl + C)">コピー</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="panel" aria-labelledby="opts">
+        <h3 id="opts">オプション</h3>
+        <div class="row" style="margin-bottom:8px">
+          <div class="check"><input type="checkbox" id="b10"><label for="b10">Base10（数字のみ）</label></div>
+          <div class="check"><input type="checkbox" id="b52"><label for="b52">Base52（英大文字・小文字）</label></div>
+          <div class="check"><input type="checkbox" id="b62" checked><label for="b62">Base62（英大文字・小文字・数字）</label></div>
+          <div class="check"><input type="checkbox" id="b64"><label for="b64">Base64（A–Z a–z 0–9 + /）</label></div>
+        </div>
+        <div class="row len">
+          <label for="len">長さ</label>
+          <input id="len" type="number" min="1" max="4096" value="32" inputmode="numeric" />
+          <span class="subtitle" id="charsetMeta">現在の文字種: 0 / エントロピー: 0bit</span>
+        </div>
+        <div class="actions" style="margin-top:14px">
+          <button id="generate">生成する</button>
+          <button class="secondary" id="clear">クリア</button>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="out">
+        <h3 id="out">結果</h3>
+        <div class="result">
+          <textarea id="output" placeholder="ここに結果が表示されます" aria-live="polite" readonly></textarea>
+        </div>
+        <div class="meta" id="meta">
+          <span class="pill" id="meta-bases">—</span>
+          <span class="pill" id="meta-length">—</span>
+          <span class="pill" id="meta-entropy">—</span>
+        </div>
+      </section>
+    </div>
+
+    <div class="footer">
+      <span>バイアスのない安全な乱数 <code>crypto.getRandomValues()</code> を使用</span>
+      <span>ショートカット：<kbd>⌘/Ctrl</kbd>+<kbd>R</kbd> 再生成 ・ <kbd>⌘/Ctrl</kbd>+<kbd>C</kbd> コピー</span>
+    </div>
+
+    <div class="glow" aria-hidden="true"></div>
+  </div>
+
+  <script>
+    // --- Character sets ---
+    const CHARSETS = {
+      Base10: '0123456789',
+      Base52: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
+      Base62: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
+      Base64: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/' // '=' はパディングなので除外
+    };
+
+    const els = {
+      b10: document.getElementById('b10'),
+      b52: document.getElementById('b52'),
+      b62: document.getElementById('b62'),
+      b64: document.getElementById('b64'),
+      len: document.getElementById('len'),
+      gen: document.getElementById('generate'),
+      clear: document.getElementById('clear'),
+      out: document.getElementById('output'),
+      metaBases: document.getElementById('meta-bases'),
+      metaLen: document.getElementById('meta-length'),
+      metaEntropy: document.getElementById('meta-entropy'),
+      charsetMeta: document.getElementById('charsetMeta'),
+      copy: document.getElementById('copy'),
+      regen: document.getElementById('regen'),
+    };
+
+    function uniq(str){
+      return Array.from(new Set(str.split(''))).join('');
+    }
+
+    function buildCharset(){
+      let set = '';
+      const picked = [];
+      if(els.b10.checked){ set += CHARSETS.Base10; picked.push('Base10'); }
+      if(els.b52.checked){ set += CHARSETS.Base52; picked.push('Base52'); }
+      if(els.b62.checked){ set += CHARSETS.Base62; picked.push('Base62'); }
+      if(els.b64.checked){ set += CHARSETS.Base64; picked.push('Base64'); }
+      set = uniq(set);
+      return { set, picked };
+    }
+
+    function log2(n){ return Math.log(n) / Math.log(2); }
+
+    function updateMeta(){
+      const { set, picked } = buildCharset();
+      const L = clampLen();
+      const size = set.length;
+      const entropy = size > 1 ? (L * log2(size)) : 0;
+      els.charsetMeta.textContent = `現在の文字種: ${size} / エントロピー: ${entropy.toFixed(2)}bit`;
+      els.metaBases.textContent = picked.length ? picked.join(' + ') : 'ベース未選択';
+      els.metaLen.textContent = `長さ: ${L}`;
+      els.metaEntropy.textContent = `推定エントロピー: ${entropy.toFixed(2)} bit`;
+      els.gen.disabled = size === 0;
+      els.regen.disabled = !els.out.value;
+      els.copy.disabled = !els.out.value;
+    }
+
+    function clampLen(){
+      let L = parseInt(els.len.value, 10);
+      if(Number.isNaN(L)) L = 32;
+      L = Math.max(1, Math.min(4096, L));
+      els.len.value = L;
+      return L;
+    }
+
+    function secureRandomString(length, charset){
+      if(!window.crypto || !window.crypto.getRandomValues){
+        // 非対応ブラウザ向け（推奨はしない）
+        console.warn('crypto.getRandomValues が利用できません。Math.random() にフォールバックします。');
+        let s = '';
+        for(let i=0;i<length;i++){
+          s += charset[(Math.random()*charset.length)|0];
+        }
+        return s;
+      }
+      const out = [];
+      const chars = charset.length;
+      // 256 の倍数に切り下げ、mod バイアスを回避
+      const max = 256 - (256 % chars);
+      while(out.length < length){
+        const buf = new Uint8Array(Math.ceil((length - out.length) * 1.2));
+        crypto.getRandomValues(buf);
+        for(const v of buf){
+          if(v < max){
+            out.push(charset[v % chars]);
+            if(out.length === length) break;
+          }
+        }
+      }
+      return out.join('');
+    }
+
+    function generate(){
+      const { set, picked } = buildCharset();
+      if(!set.length){
+        alert('少なくとも1つのベースを選択してください。');
+        return;
+      }
+      const L = clampLen();
+      const s = secureRandomString(L, set);
+      els.out.value = s;
+      updateMeta();
+      // アナウンス
+      els.out.setAttribute('aria-live','assertive');
+      setTimeout(()=>els.out.setAttribute('aria-live','polite'), 250);
+    }
+
+    function copy(){
+      if(!els.out.value) return;
+      navigator.clipboard?.writeText(els.out.value).then(()=>{
+        toast('コピーしました');
+      }).catch(()=>{
+        // 失敗時は選択だけ
+        els.out.select();
+        toast('選択しました。Ctrl/⌘+C でコピーしてください');
+      });
+    }
+
+    function toast(msg){
+      const el = document.createElement('div');
+      el.textContent = msg;
+      el.style.cssText = `
+        position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
+        background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+        border:1px solid rgba(255,255,255,.18); color: var(--text);
+        padding:10px 14px; border-radius: 999px; box-shadow: var(--shadow); z-index: 9999; font-weight: 700;`;
+      document.body.appendChild(el);
+      setTimeout(()=> el.remove(), 1400);
+    }
+
+    // events
+    for(const id of ['b10','b52','b62','b64']){
+      els[id].addEventListener('change', updateMeta);
+    }
+    els.len.addEventListener('input', updateMeta);
+    els.gen.addEventListener('click', generate);
+    els.clear.addEventListener('click', ()=>{ els.out.value=''; updateMeta(); });
+    els.copy.addEventListener('click', copy);
+    els.regen.addEventListener('click', generate);
+
+    // shortcuts
+    window.addEventListener('keydown', (e)=>{
+      if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='r'){ e.preventDefault(); generate(); }
+      if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='c'){ e.preventDefault(); copy(); }
+    });
+
+    // 初期
+    updateMeta();
+  </script>
+</body>
+</html>
